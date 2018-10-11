@@ -68,4 +68,12 @@ public class Loader {
         return Double.parseDouble(st.nextToken());
     }
 
+    public int getDimension() { return dimension; }
+    public int getNumOfItems() { return numOfItems; }
+    public int getCapacity() { return capacity; }
+    public double getMinSpeed() { return minSpeed; }
+    public double getMaxSpeed() { return maxSpeed; }
+    public double getRentingRatio() { return rentingRatio; }
+    public City[] getCities() { return cities; }
+    public Item[] getItems() { return items; }
 }
