@@ -1,7 +1,7 @@
 import java.io.BufferedReader;
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.ArrayList;
+import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,6 +13,8 @@ public class Loader {
     private double minSpeed;
     private double maxSpeed;
     private double rentingRatio;
+    private City[] cities;
+    private Item[] items;
 
     public Loader(String definitionFile) {
         this.definitionFile = definitionFile;
@@ -22,30 +24,48 @@ public class Loader {
         BufferedReader reader;
         try {
             reader = new BufferedReader(new FileReader(definitionFile));
-            System.out.println("Chociaz tu się udalo");
             reader.readLine();//PROBLEM NAME
             reader.readLine();//KNAPSACK DATA TYPE
-            dimension = getNumber(reader.readLine()).get(0).intValue();
-            numOfItems = getNumber(reader.readLine()).get(0).intValue();
-            capacity = getNumber(reader.readLine()).get(0).intValue();
-            minSpeed = getNumber(reader.readLine()).get(0);
-            maxSpeed = getNumber(reader.readLine()).get(0);
-            rentingRatio = getNumber(reader.readLine()).get(0);
+            dimension = (int)getNumber(reader.readLine());
+            numOfItems = (int)getNumber(reader.readLine());
+            capacity = (int)getNumber(reader.readLine());
+            minSpeed = getNumber(reader.readLine());
+            maxSpeed = getNumber(reader.readLine());
+            rentingRatio = getNumber(reader.readLine());
             reader.readLine();//EDGE_WEIGHT_TYPE
-            System.out.println(dimension + " " + numOfItems + " " + capacity
-                    + " " + minSpeed + " " + maxSpeed + " " + rentingRatio);
+            reader.readLine();//NODE_COORD_SECTION...
+            cities = new City[dimension];
+            items = new Item[numOfItems];
+            for (int i = 0; i < dimension; i++) {
+                StringTokenizer st = new StringTokenizer(reader.readLine(), " \t");
+                cities[i] = new City(castToIntTokenizer(st), castToDoubleTokenizer(st), castToDoubleTokenizer(st));
+            }
+            reader.readLine();
+            for (int i = 0; i < numOfItems; i++) {
+                StringTokenizer st = new StringTokenizer(reader.readLine(), " \t");
+                items[i] = new Item(castToIntTokenizer(st), castToIntTokenizer(st), castToIntTokenizer(st), castToIntTokenizer(st));
+            }
+        } catch (FileNotFoundException fnfe) {
+            System.out.println("A file doesn't exist or is in use now!");
         } catch (Exception e) {
-            System.out.println("The file could not be read!");
+            System.out.println("An error has occurred while reading data: " + e);
         }
+
     }
 
-    private ArrayList<Double> getNumber(String line) {
-        ArrayList<Double> result = new ArrayList<>();
-        Pattern p = Pattern.compile("\\d+.\\d+");
+    private double getNumber(String line) {
+        Pattern p = Pattern.compile("\\d+(\\.\\d+)?");
         Matcher m = p.matcher(line);
-        while (m.find()) {
-            result.add(Double.parseDouble(m.group()));
-        }
-        return result;
+        m.find();
+        return Double.parseDouble(m.group());
     }
+
+    private int castToIntTokenizer(StringTokenizer st) {
+        return Integer.parseInt(st.nextToken());
+    }
+
+    private double castToDoubleTokenizer(StringTokenizer st) {
+        return Double.parseDouble(st.nextToken());
+    }
+
 }
