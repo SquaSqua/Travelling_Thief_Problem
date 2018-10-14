@@ -16,6 +16,8 @@ public class Evolution {
     private int popSize;
     private int numOfGeners;
 
+    private double coefficient;
+
     private ArrayList<Individual> population = new ArrayList<>();
 
     public Evolution(String definitionFile, int popSize, int numOfGeners) {
@@ -31,6 +33,8 @@ public class Evolution {
         items = loader.getItems();
         distances = new double[dimension][dimension];
         createDimensionArray();
+
+        coefficient = capacity * (maxSpeed - minSpeed);
 
         this.popSize = popSize;
         this.numOfGeners = numOfGeners;
@@ -60,7 +64,7 @@ public class Evolution {
     }
 
     public Individual generateRandomInd() {
-        double[] route = new double[dimension + 1];
+        int[] route = new int[dimension + 1];
         ArrayList<Integer> routeList = new ArrayList<>();
         for(int i = 0; i < dimension; i++) {
             routeList.add(i);
@@ -70,9 +74,11 @@ public class Evolution {
             route[i] = routeList.get(i);
         }
         route[dimension] = route[0];
-        Individual ind =  new Individual(route);
+        Individual ind =  new Individual(route, distances, items, maxSpeed, coefficient);
         return ind;
     }
+
+
 
     public void evolve() {
 
