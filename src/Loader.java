@@ -13,8 +13,8 @@ public class Loader {
     private double minSpeed;
     private double maxSpeed;
     private double rentingRatio;
-    private City[] cities;
-    private Item[] items;
+    private double[][] cities;
+    private int[][] items;
 
     public Loader(String definitionFile) {
         this.definitionFile = definitionFile;
@@ -34,16 +34,20 @@ public class Loader {
             rentingRatio = getNumber(reader.readLine());
             reader.readLine();//EDGE_WEIGHT_TYPE
             reader.readLine();//NODE_COORD_SECTION...
-            cities = new City[dimension];
-            items = new Item[numOfItems];
-            for (int i = 0; i < dimension; i++) {
+            cities = new double[dimension][3];
+            items = new int[numOfItems][4];
+            for (int i = 0; i < dimension; i++) {//filling out cities array
                 StringTokenizer st = new StringTokenizer(reader.readLine(), " \t");
-                cities[i] = new City(castToIntTokenizer(st), castToDoubleTokenizer(st), castToDoubleTokenizer(st));
+                for(int j = 0; j < 3; j++) {
+                    cities[i][j] = Double.parseDouble(st.nextToken());
+                }
             }
             reader.readLine();
-            for (int i = 0; i < numOfItems; i++) {
+            for (int i = 0; i < numOfItems; i++) {//filling out items array
                 StringTokenizer st = new StringTokenizer(reader.readLine(), " \t");
-                items[i] = new Item(castToIntTokenizer(st), castToIntTokenizer(st), castToIntTokenizer(st), castToIntTokenizer(st));
+                for(int j = 0; j < 4; j++) {
+                    items[i][j] = Integer.parseInt(st.nextToken());
+                }
             }
         } catch (FileNotFoundException fnfe) {
             System.out.println("A file doesn't exist or is in use now!");
@@ -60,13 +64,6 @@ public class Loader {
         return Double.parseDouble(m.group());
     }
 
-    private int castToIntTokenizer(StringTokenizer st) {
-        return Integer.parseInt(st.nextToken());
-    }
-
-    private double castToDoubleTokenizer(StringTokenizer st) {
-        return Double.parseDouble(st.nextToken());
-    }
 
     public int getDimension() { return dimension; }
     public int getNumOfItems() { return numOfItems; }
@@ -74,6 +71,6 @@ public class Loader {
     public double getMinSpeed() { return minSpeed; }
     public double getMaxSpeed() { return maxSpeed; }
     public double getRentingRatio() { return rentingRatio; }
-    public City[] getCities() { return cities; }
-    public Item[] getItems() { return items; }
+    public double[][] getCities() { return cities; }
+    public int[][] getItems() { return items; }
 }
