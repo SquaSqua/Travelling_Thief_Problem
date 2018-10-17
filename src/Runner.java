@@ -6,3 +6,4 @@ public class Runner {
         System.out.println(System.currentTimeMillis() - start);
     }
 }
+//dopisuję tu jakis komentarz
