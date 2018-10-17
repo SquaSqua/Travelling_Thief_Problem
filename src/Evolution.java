@@ -12,6 +12,7 @@ public class Evolution {
     private double[][] cities;
     private double[][] distances;
     private int[][] items;
+    private int[][] itemsOfCities;
 
     private int popSize;
     private int numOfGeners;
@@ -32,6 +33,7 @@ public class Evolution {
         cities = loader.getCities();
         items = loader.getItems();
         distances = new double[dimension][dimension];
+        itemsOfCities = new int[dimension][];
         createDistancesArray();
 
         coefficient = (maxSpeed - minSpeed) / capacity;
@@ -54,6 +56,13 @@ public class Evolution {
                 distances[j][i] = distance;//redundant
                 //mozna zmienic tablicę na niesymetryczna, zeby zajmowala mniej miejsca
             }
+        }
+    }
+
+    public void createItemsOfCitiesArray() {
+        ArrayList<ArrayList<Integer>> groupedItems = new ArrayList<>();
+        for(int i = 0; i < items.length; i++) {
+            groupedItems.items[i][0]
         }
     }
 
