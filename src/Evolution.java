@@ -4,7 +4,7 @@ import java.util.Collections;
 public class Evolution {
 
     private int dimension;
-    private int numOfItems;
+    private int numOfItems;//potrzebuję tego?
     private int capacity;
     private double minSpeed;
     private double maxSpeed;
@@ -32,20 +32,19 @@ public class Evolution {
         cities = loader.getCities();
         items = loader.getItems();
         distances = new double[dimension][dimension];
-        createDimensionArray();
+        createDistancesArray();
 
-        coefficient = capacity * (maxSpeed - minSpeed);
+        coefficient = (maxSpeed - minSpeed) / capacity;
 
         this.popSize = popSize;
         this.numOfGeners = numOfGeners;
-        initialize();
     }
 
-    public void createDimensionArray() {
-        for(int i = 0; i < dimension; i++) {
-            for(int j = 0; j < dimension; j++) {
+    public void createDistancesArray() {
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
                 double distance;
-                if(i == j) {
+                if (i == j) {
                     distance = 0;
                 } else {
                     distance = Math.sqrt(Math.abs(cities[i][1] - cities[j][1])
@@ -53,12 +52,13 @@ public class Evolution {
                 }
                 distances[i][j] = distance;
                 distances[j][i] = distance;//redundant
+                //mozna zmienic tablicę na niesymetryczna, zeby zajmowala mniej miejsca
             }
         }
     }
 
     public void initialize() {
-        for(int i = 0; i < popSize; i++) {
+        for (int i = 0; i < popSize; i++) {
             population.add(generateRandomInd());
         }
     }
@@ -66,21 +66,22 @@ public class Evolution {
     public Individual generateRandomInd() {
         int[] route = new int[dimension + 1];
         ArrayList<Integer> routeList = new ArrayList<>();
-        for(int i = 0; i < dimension; i++) {
+        for (int i = 0; i < dimension; i++) {
             routeList.add(i);
         }
         Collections.shuffle(routeList);
-        for(int i = 0; i < dimension; i++) {
+        for (int i = 0; i < dimension; i++) {
             route[i] = routeList.get(i);
         }
         route[dimension] = route[0];
-        Individual ind =  new Individual(route, distances, items, maxSpeed, coefficient);
+        Individual ind = new Individual(route, distances, items, maxSpeed, coefficient, rentingRatio, capacity);
+//        System.out.println(ind.toString());
         return ind;
     }
 
 
-
     public void evolve() {
+        initialize();
 
     }
 }
