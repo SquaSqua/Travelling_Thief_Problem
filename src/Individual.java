@@ -5,6 +5,7 @@ public class Individual {
     private int[] packingPlan;
     private double[][] distances;
     private int[][] items;
+    private Integer[][] groupedItems;
     private ArrayList<double[]> gainOfItems;
     private double maxSpeed;
     private double coefficient;
@@ -13,9 +14,11 @@ public class Individual {
     private int capacity;
     private double fitness;
 
-    public Individual(int[] route, double[][] distances, int[][] items, double maxSpeed, double coefficient, double rentingRatio, int capacity) {
+    public Individual(int[] route, double[][] distances, int[][] items,
+                      Integer[][] groupedItems, double maxSpeed, double coefficient, double rentingRatio, int capacity) {
         this.route = route;
         this.distances = distances;
+        this.groupedItems = groupedItems;
         this.items = items;
         gainOfItems = new ArrayList<>();
         this.maxSpeed = maxSpeed;
@@ -27,6 +30,7 @@ public class Individual {
 
         countGain();
         setPackingPlan();
+        countFitness();
     }
 
     private void setPackingPlan() {
@@ -85,22 +89,23 @@ public class Individual {
         }
         gainOfItems.sort((double[] o1, double[] o2) ->
                 o2[1] - o1[1] < 0 ? -1 : o2[1] > 0 ? 1 : 0);
-        for(int i = 0; i < gainOfItems.size(); i++) {
-            System.out.println(gainOfItems.get(i)[1] + ", ");
-        }
     }
 
     public void countFitness() {
         double wage = 0;
+        double weight = 0;
         double time = 0;
-        double currentSpeed = 0;
-        int currentPosition = 0;
-        for(int i = 0; i < packingPlan.length; i++) {
-            if(packingPlan[i] == 1) {
-                wage += items[i][1];
-            }
-            countTime(currentPosition, currentPosition + 1)
+        for(int currentPosition = 0; currentPosition < route.length - 1; ) {
+                Integer[] currentCity = groupedItems[currentPosition];
+                for(int j = 0; j < currentCity.length; j++) {
+                    if(packingPlan[currentCity[j]] == 1) {
+                        wage += items[currentCity[j]][1];
+                        weight += items[currentCity[j]][2];
+                    }
+                }
+            time += countTime(currentPosition, ++currentPosition, countSpeed(weight));
         }
+        fitness = wage - (rentingRatio * time);
     }
 
     public int[] getRoute() {
