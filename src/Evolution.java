@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
@@ -89,6 +88,8 @@ public class Evolution {
             population.add(generateRandomInd());
         }
     }
+
+    public void myFictionalMethod(){}
 
     public Individual generateRandomInd() {
         int[] route = new int[dimension + 1];
