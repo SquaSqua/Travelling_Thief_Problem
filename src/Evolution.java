@@ -1,5 +1,3 @@
-import sun.nio.cs.ext.MacArabic;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -8,7 +6,6 @@ import java.util.Random;
 public class Evolution {
 
     private int dimension;
-    private int numOfItems;//potrzebuję tego?
     private int capacity;
     private double minSpeed;
     private double maxSpeed;
@@ -28,11 +25,12 @@ public class Evolution {
 
     private ArrayList<Individual> population = new ArrayList<>();
 
+    public double maxOfAll = Double.MIN_VALUE;
+
     public Evolution(String definitionFile, int popSize, int numOfGeners, int tournamentSize, double crossProb, double mutProb) {
         Loader loader = new Loader(definitionFile);
         loader.readFile();
         dimension = loader.getDimension();
-        numOfItems = loader.getNumOfItems();
         capacity = loader.getCapacity();
         minSpeed = loader.getMinSpeed();
         maxSpeed = loader.getMaxSpeed();
@@ -104,14 +102,15 @@ public class Evolution {
         }
         route[dimension] = route[0];
         Individual ind = new Individual(route, distances, items, groupedItems, maxSpeed, coefficient, rentingRatio, capacity);
+
         return ind;
     }
 
 
-    public void evolve() {
+    public String evolve(int generCounter) {
         initialize();
-        for(int i = 0; i < numOfGeners - 1; i++) {
-            ArrayList<Individual> nextGeneration = new ArrayList<>();
+        ArrayList<Individual> nextGeneration = new ArrayList<>();
+        for(int i = 0; i < popSize - 1; i++) {
             int[][] children = crossingOver(tournament(), tournament());
             nextGeneration.add(new Individual(mutation(children[0]), distances, items, groupedItems, maxSpeed,
                     coefficient, rentingRatio, capacity));
@@ -120,31 +119,34 @@ public class Evolution {
                         coefficient, rentingRatio, capacity));
                 i++;
             }
-
         }
-
+        population = nextGeneration;
+        return statistics(generCounter);
     }
 
     public int[] tournament() {
 
-        double bestTime = Double.MAX_VALUE;
-        int[] bestRoute = new int[dimension + 1];
+        double bestFitness = Double.MIN_VALUE;
+        int rand = new Random().nextInt(popSize);
+        Individual best = population.get(rand);//never remembered, just initialization
         for(int i = 0; i < tournamentSize; i++) {
-            int[] current = population.get(new Random().nextInt(popSize)).getRoute();
-            double time = countDistance(current);
-            if(time < bestTime) {
-                bestTime = time;
-                bestRoute = current;
+            Individual current = population.get(new Random().nextInt(popSize));
+            double fitness = current.countFitness();
+//            double fitness = current.countFitnessForRoute();
+            if(fitness > bestFitness) {
+                bestFitness = fitness;
+                best = current;
             }
         }
-        return bestRoute;
+        return best.getRoute();
     }
 
     public double countDistance(int[] route) {
         double distance = 0;
-        for(int i = 0; i < route.length - 1; ) {
+        for(int i = 0; i < route.length - 2; ) {
             distance += distances[i][++i];
         }
+        distance += distances[route.length - 2][0];
         return distance;
     }
 
@@ -160,7 +162,7 @@ public class Evolution {
             //rest for parent1
             boolean used = false;
             int from = 0;
-            for(int empty = crossPoint; empty < child1.length - 1 && from < parent2.length; empty++) {
+            for(int empty = crossPoint; empty < child1.length - 1;) {
                 for(int j = 0; j < empty; j++) {
                     if(child1[j] == parent2[from]){
                         used = true;
@@ -169,16 +171,17 @@ public class Evolution {
                 }
                 if(!used) {
                     child1[empty] = parent2[from];
+                    empty++;
                 }
                 used = false;
                 from++;
             }
-            child1[parent1.length - 1] = parent1[0];
+            child1[parent1.length - 1] = child1[0];
 
             //rest for parent2
             used = false;
             from = 0;
-            for(int empty = crossPoint; empty < child2.length - 1 && from < parent1.length; empty++) {
+            for(int empty = crossPoint; empty < child2.length - 1;) {
                 for(int j = 0; j < empty; j++) {
                     if(child2[j] == parent1[from]){
                         used = true;
@@ -187,11 +190,12 @@ public class Evolution {
                 }
                 if(!used) {
                     child2[empty] = parent1[from];
+                    empty++;
                 }
                 used = false;
                 from++;
             }
-            child2[parent2.length - 1] = parent2[0];
+            child2[parent2.length - 1] = child2[0];
         }
         else {
             child1 = parent1;
@@ -201,7 +205,7 @@ public class Evolution {
     }
 
     public int[] mutation(int[] route) {
-        for(int i = 0; i < route.length - 1; i++) {
+        for(int i = 0; i < route.length - 2; i++) {
             if(Math.random() < mutProb) {
                 int swapIndex = new Random().nextInt(route.length - 1);
                 int temp = route[i];
@@ -209,8 +213,38 @@ public class Evolution {
                 route[swapIndex] = temp;
             }
             route[route.length - 1] = route[0];
-            System.out.println(Arrays.toString(route));
         }
         return route;
+    }
+
+    public int getNumOfGeners() {
+        return numOfGeners;
+    }
+
+    public String statistics(int pop_number) {
+        double minFitness = 2.147483647E9D;
+        double maxFitness = 0.0D;
+        double avgDuration = 0.0D;
+
+
+        for(int i = 0; i < popSize; i++) {
+            Individual ind = population.get(i);
+            double fitness = ind.getFitness();
+            if (fitness < minFitness) {
+                minFitness = fitness;
+            }
+
+            if (fitness > maxFitness) {
+                maxFitness = fitness;
+            }
+
+            avgDuration += fitness;
+        }
+
+        if (this.maxOfAll < maxFitness) {
+            this.maxOfAll = maxFitness;
+        }
+
+        return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
     }
 }

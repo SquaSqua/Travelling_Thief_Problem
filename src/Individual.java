@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Individual {
     private int[] route;
@@ -61,17 +62,26 @@ public class Individual {
 
     private double countRoad(int startIndex, int endIndex) {
         double completeDistance = 0;
-        for(int i = startIndex; i < endIndex; i++) {
-            completeDistance += distances[route[i]][route[i + 1]];
+        if(endIndex == route.length - 1) {
+            for(int i = startIndex; i < endIndex - 1; ) {
+                completeDistance += distances[route[i]][route[++i]];
+            }
+            completeDistance += distances[route.length - 2][0];
         }
+        else {
+            for(int i = startIndex; i < endIndex; i++) {
+                completeDistance += distances[route[i]][route[i + 1]];
+            }
+        }
+
         return completeDistance;
     }
 
     public double countSpeed(double currentWeight) {
         return maxSpeed - (currentWeight * coefficient);
     }
-    //for each item gain is counted as a v/(t * w) - R(t - tb), where v - value of one item, t - time of carrying
-    //this one item with no more items from the point it was placed to, w - weight of an item, R - renting ratio,
+    //for each item gain is counted as a v - R(t - tb), where v - value of one item, R - renting ratio,
+    // t - time of carrying this one item with no more items from the point it was placed to,
     //tb - basic time of travel from the chosen point with empty knapsack
     private void countGain() {
         for(int i = 0; i < items.length; i++) {
@@ -82,16 +92,15 @@ public class Individual {
                     break;
                 }
             }
-            double currentSpeed = countSpeed(items[i][2]);
-            gainOfItems.add(new double[] {i, (((items[i][1] / countTime(ind, currentSpeed) -
-                    - rentingRatio * (countTime(ind, currentSpeed) - countTime(ind, maxSpeed)))
+            gainOfItems.add(new double[] {i, (((items[i][1] -
+                    - rentingRatio * (countTime(ind, countSpeed(items[i][2])) - countTime(ind, maxSpeed)))
                     / capacity))});
         }
         gainOfItems.sort((double[] o1, double[] o2) ->
                 o2[1] - o1[1] < 0 ? -1 : o2[1] > 0 ? 1 : 0);
     }
 
-    public void countFitness() {
+    public double countFitness() {
         double wage = 0;
         double weight = 0;
         double time = 0;
@@ -106,6 +115,15 @@ public class Individual {
             time += countTime(currentPosition, ++currentPosition, countSpeed(weight));
         }
         fitness = wage - (rentingRatio * time);
+        return fitness;
+    }
+
+    public double countFitnessForRoute() {
+        double distance = 0;
+        for(int i = 0; i < route.length - 1; ) {
+            distance += distances[route[i]][route[++i]];
+        }
+        return distance;
     }
 
     public int[] getRoute() {
