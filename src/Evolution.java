@@ -105,14 +105,65 @@ public class Evolution {
     }
 
 
-    public String evolve(int generCounter) {
-        initialize();
-        ArrayList<Individual> nextGeneration = new ArrayList<>();
-        for(int i = 0; i < popSize; i++) {
-            frontGenerator(population);
-            crowdingDistanceSetter();
-        }
+    public String evolve() {
+        String measures = "", archivePrint = "";
+        StringBuilder sBMeasures = new StringBuilder(measures);
+        StringBuilder sBArchivePrint = new StringBuilder(archivePrint);
 
+        initialize();
+        ArrayList<Individual> offspring;
+        ArrayList<Individual> nextGeneration;
+        for(int generation = 1; generation < numOfGeners; generation++) {
+            paretoFronts = frontGenerator(population);
+            assignRank();
+            crowdingDistanceSetter();
+            offspring = matingPool();
+            population.addAll(offspring);
+            paretoFronts = frontGenerator(population);
+            assignRank();
+            crowdingDistanceSetter();
+            nextGeneration = new ArrayList<>();
+            int i = 0;
+            while(nextGeneration.size() < popSize) {
+                if(paretoFronts.get(i).size() < popSize - nextGeneration.size()) {
+                    nextGeneration.addAll(paretoFronts.get(i));
+                    i++;
+                }
+                else {
+                    sortFront(i);
+                    while(nextGeneration.size() < popSize) {
+                        nextGeneration.add(paretoFronts.get(i).get(0));
+                        paretoFronts.get(i).remove(paretoFronts.get(i).get(0));
+                    }
+                }
+            }
+            population = nextGeneration;
+        }
+//        sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
+        sBMeasures.append("\n");
+//        sBArchivePrint.append(printPF(archive, sBArchivePrint));
+//        System.out.println(sBArchivePrint.toString());
+        sBMeasures.append(sBArchivePrint.toString());
+        measures = sBMeasures.toString();
+
+        return measures;
+    }
+
+    public ArrayList<Individual> matingPool() {
+        ArrayList<Individual> offspring = new ArrayList<>();
+        for(int i = 0; i < popSize; i++) {
+            Individual parent1 = tournament();
+            Individual parent2 = tournament();
+            int[][] children = crossingOver(parent1.getRoute(), parent2.getRoute());
+            offspring.add(new Individual(mutation(children[0]), distances, items, groupedItems, maxSpeed,
+                    coefficient, capacity));
+            i++;
+            if(i < popSize) {
+                offspring.add(new Individual(mutation(children[1]), distances, items, groupedItems, maxSpeed,
+                        coefficient, capacity));
+            }
+        }
+        return offspring;
     }
 
     public Individual tournament() {
@@ -216,32 +267,32 @@ public class Evolution {
         return numOfGeners;
     }
 
-    public String statistics(int pop_number) {
-        double minFitness = 2.147483647E9D;
-        double maxFitness = 0.0D;
-        double avgDuration = 0.0D;
-
-
-        for(int i = 0; i < popSize; i++) {
-            Individual ind = population.get(i);
-            double fitness = ind.getFitness();
-            if (fitness < minFitness) {
-                minFitness = fitness;
-            }
-
-            if (fitness > maxFitness) {
-                maxFitness = fitness;
-            }
-
-            avgDuration += fitness;
-        }
-
-        if (this.maxOfAll < maxFitness) {
-            this.maxOfAll = maxFitness;
-        }
-
-        return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
-    }
+//    public String statistics(int pop_number) {
+//        double minFitness = 2.147483647E9D;
+//        double maxFitness = 0.0D;
+//        double avgDuration = 0.0D;
+//
+//
+//        for(int i = 0; i < popSize; i++) {
+//            Individual ind = population.get(i);
+//            double fitness = ind.getFitness();
+//            if (fitness < minFitness) {
+//                minFitness = fitness;
+//            }
+//
+//            if (fitness > maxFitness) {
+//                maxFitness = fitness;
+//            }
+//
+//            avgDuration += fitness;
+//        }
+//
+//        if (this.maxOfAll < maxFitness) {
+//            this.maxOfAll = maxFitness;
+//        }
+//
+//        return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
+//    }
 
     public ArrayList<ArrayList<Individual>> frontGenerator(ArrayList<Individual> group) {
 
@@ -321,7 +372,6 @@ public class Evolution {
 //            }
 //        }
 //        return dataGenerator();
-        assignRank();
         return fronts;
     }
 
@@ -333,13 +383,11 @@ public class Evolution {
         }
     }
 
-    public void objectiveSorting() {
-        for(int i = 0; i < paretoFronts.size(); i++) {
-            Collections.sort(paretoFronts.get(i), new ObjectiveFrontComparator());
-        }
+    public void sortFront(int i) {
+        Collections.sort(paretoFronts.get(i), new CrowdingDistanceComparator());
     }
 
-    public void crowdingDistanceSorting() {
+    public void objectiveSorting() {
         for(int i = 0; i < paretoFronts.size(); i++) {
             Collections.sort(paretoFronts.get(i), new ObjectiveFrontComparator());
         }
