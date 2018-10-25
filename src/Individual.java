@@ -15,6 +15,7 @@ public class Individual {
     private int fitnessWage;
     private double fitnessTime;
     private double crowdingDistance;
+    private int rank;
 
     public Individual(int[] route, double[][] distances, int[][] items,
                       Integer[][] groupedItems, double maxSpeed, double coefficient, int capacity) {
@@ -82,14 +83,9 @@ public class Individual {
     //tb - basic time of travel from the chosen point with empty knapsack
     private void countGain() {
         for(int i = 0; i < items.length; i++) {
-            int ind = -1;//index of a city of an item 'i' in a route
-            for(int j = 0; j < route.length; j++) {//finding index of city number
-                if(route[j] + 1 == items[i][3]) {
-                    ind = j;
-                    break;
-                }
-            }
-            gainOfItems.add(new double[] {i, (items[i][1] / countTime(ind, countSpeed(items[i][2])))});
+            int[] currentRow = items[i];
+            gainOfItems.add(new double[] {i, currentRow[1] /
+                    (currentRow[2] * countTime(currentRow[3], countSpeed(currentRow[2])))});
         }
         gainOfItems.sort((double[] o1, double[] o2) ->
                 o2[1] - o1[1] < 0 ? -1 : o2[1] > 0 ? 1 : 0);
@@ -135,6 +131,18 @@ public class Individual {
 
     public void setCrowdingDistance(double crowdingDistance) {
         this.crowdingDistance = crowdingDistance;
+    }
+
+    public double getCrowdingDistance() {
+        return crowdingDistance;
+    }
+
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
+
+    public int getRank() {
+        return rank;
     }
 
     public String toString() {

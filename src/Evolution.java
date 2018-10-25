@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
@@ -109,11 +108,32 @@ public class Evolution {
     public String evolve(int generCounter) {
         initialize();
         ArrayList<Individual> nextGeneration = new ArrayList<>();
+        for(int i = 0; i < popSize; i++) {
+            frontGenerator(population);
+            crowdingDistanceSetter();
+        }
 
     }
 
     public Individual tournament() {
-
+        Individual bestIndividual = population.get(0);//just any individual to initialize
+        int bestRank = Integer.MAX_VALUE;
+        Random rand = new Random();
+        for(int i = 0; i < tournamentSize; i++) {
+            Individual individual = population.get(rand.nextInt(popSize));
+            int rank = individual.getRank();
+            if (rank < bestRank) {
+                bestRank = rank;
+                bestIndividual = individual;
+            }
+            else if(rank == bestRank) {
+                if(bestIndividual.getCrowdingDistance() < individual.getCrowdingDistance()) {
+                    bestRank = rank;
+                    bestIndividual = individual;
+                }
+            }
+        }
+        return bestIndividual;
     }
 
     public double countDistance(int[] route) {
@@ -301,7 +321,16 @@ public class Evolution {
 //            }
 //        }
 //        return dataGenerator();
+        assignRank();
         return fronts;
+    }
+
+    public void assignRank() {
+        for(int i = 0; i < paretoFronts.size(); i++) {
+            for(int j = 0; j < paretoFronts.get(i).size(); j++) {
+                paretoFronts.get(i).get(j).setRank(i);
+            }
+        }
     }
 
     public void objectiveSorting() {
