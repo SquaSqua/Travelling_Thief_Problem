@@ -1,3 +1,4 @@
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
@@ -25,6 +26,8 @@ public class Evolution {
     private ArrayList<ArrayList<Individual>> paretoFronts = new ArrayList<>();
 
     public double maxOfAll = Double.MIN_VALUE;
+    Point ideal = new Point();
+    Point nadir = new Point();
 
     public Evolution(String definitionFile, int popSize, int numOfGeners, int tournamentSize, double crossProb, double mutProb) {
         Loader loader = new Loader(definitionFile);
@@ -139,9 +142,9 @@ public class Evolution {
             }
             population = nextGeneration;
         }
-//        sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
+        sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
         sBMeasures.append("\n");
-//        sBArchivePrint.append(printPF(archive, sBArchivePrint));
+        sBArchivePrint.append(printPF(paretoFronts.get(0), sBArchivePrint));//tu docelowo powinno byc archive
 //        System.out.println(sBArchivePrint.toString());
         sBMeasures.append(sBArchivePrint.toString());
         measures = sBMeasures.toString();
@@ -263,37 +266,6 @@ public class Evolution {
         return route;
     }
 
-    public int getNumOfGeners() {
-        return numOfGeners;
-    }
-
-//    public String statistics(int pop_number) {
-//        double minFitness = 2.147483647E9D;
-//        double maxFitness = 0.0D;
-//        double avgDuration = 0.0D;
-//
-//
-//        for(int i = 0; i < popSize; i++) {
-//            Individual ind = population.get(i);
-//            double fitness = ind.getFitness();
-//            if (fitness < minFitness) {
-//                minFitness = fitness;
-//            }
-//
-//            if (fitness > maxFitness) {
-//                maxFitness = fitness;
-//            }
-//
-//            avgDuration += fitness;
-//        }
-//
-//        if (this.maxOfAll < maxFitness) {
-//            this.maxOfAll = maxFitness;
-//        }
-//
-//        return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
-//    }
-
     public ArrayList<ArrayList<Individual>> frontGenerator(ArrayList<Individual> group) {
 
         ArrayList<ArrayList<Individual>> fronts = new ArrayList<>();
@@ -408,5 +380,43 @@ public class Evolution {
                 currentInd.setCrowdingDistance(a * b);
             }
         }
+    }
+
+    public String printPF(ArrayList<Individual> a, StringBuilder sB) {
+        for(Individual i : a) {
+            sB.append(i.getFitnessTime() + ", ");
+            sB.append(i.getFitnessWage() + ", ");
+            sB.append("\n");
+        }
+        return sB.toString();
+    }
+
+    public String ED_measure(ArrayList<Individual> group) {
+        double sumED = 0;
+        for(int i = 0; i < group.size(); i++) {
+            Individual ind = group.get(i);
+            sumED += Math.round(Math.sqrt(Long.valueOf((int)((ind.getFitnessTime() - ideal.x)
+                    * (ind.getFitnessTime() - ideal.x) + (ind.getFitnessWage() - ideal.y)
+                    * (ind.getFitnessWage() - ideal.y)))));
+        }
+        sumED = (sumED / group.size());
+
+        return Math.round(sumED) + "";
+    }
+
+    public String PFS_measure() {
+        return paretoFronts.get(0).size() + "";//docelowo archive
+    }
+
+    public double HV_measure() {
+        Collections.sort(paretoFronts.get(0), new ObjectiveFrontComparator());//docelowo archive
+        Long hyperVolume = 0L;
+        int lastY = nadir.y;
+        for(int i = 0; i < paretoFronts.get(0).size(); i++) {
+            hyperVolume += ((int)((nadir.x - paretoFronts.get(0).get(i).getFitnessTime())
+                    * (lastY - paretoFronts.get(0).get(i).getFitnessWage())));
+            lastY = paretoFronts.get(0).get(i).getFitnessWage();
+        }
+        return hyperVolume;
     }
 }
