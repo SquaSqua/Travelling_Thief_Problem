@@ -9,7 +9,6 @@ public class Evolution {
     private int capacity;
     private double minSpeed;
     private double maxSpeed;
-    private double rentingRatio;
     private double[][] cities;
     private double[][] distances;
     private int[][] items;
@@ -24,6 +23,7 @@ public class Evolution {
     private double coefficient;
 
     private ArrayList<Individual> population = new ArrayList<>();
+    private ArrayList<ArrayList<Individual>> paretoFronts = new ArrayList<>();
 
     public double maxOfAll = Double.MIN_VALUE;
 
@@ -34,7 +34,6 @@ public class Evolution {
         capacity = loader.getCapacity();
         minSpeed = loader.getMinSpeed();
         maxSpeed = loader.getMaxSpeed();
-        rentingRatio = loader.getRentingRatio();
         cities = loader.getCities();
         items = loader.getItems();
         distances = new double[dimension][dimension];
@@ -101,7 +100,7 @@ public class Evolution {
             route[i] = routeList.get(i);
         }
         route[dimension] = route[0];
-        Individual ind = new Individual(route, distances, items, groupedItems, maxSpeed, coefficient, rentingRatio, capacity);
+        Individual ind = new Individual(route, distances, items, groupedItems, maxSpeed, coefficient, capacity);
 
         return ind;
     }
@@ -110,35 +109,11 @@ public class Evolution {
     public String evolve(int generCounter) {
         initialize();
         ArrayList<Individual> nextGeneration = new ArrayList<>();
-        for(int i = 0; i < popSize - 1; i++) {
-            int[][] children = crossingOver(tournament(), tournament());
-            nextGeneration.add(new Individual(mutation(children[0]), distances, items, groupedItems, maxSpeed,
-                    coefficient, rentingRatio, capacity));
-            if(nextGeneration.size() < popSize) {
-                nextGeneration.add(new Individual(mutation(children[1]), distances, items, groupedItems, maxSpeed,
-                        coefficient, rentingRatio, capacity));
-                i++;
-            }
-        }
-        population = nextGeneration;
-        return statistics(generCounter);
+
     }
 
-    public int[] tournament() {
+    public Individual tournament() {
 
-        double bestFitness = Double.MIN_VALUE;
-        int rand = new Random().nextInt(popSize);
-        Individual best = population.get(rand);//never remembered, just initialization
-        for(int i = 0; i < tournamentSize; i++) {
-            Individual current = population.get(new Random().nextInt(popSize));
-            double fitness = current.countFitness();
-//            double fitness = current.countFitnessForRoute();
-            if(fitness > bestFitness) {
-                bestFitness = fitness;
-                best = current;
-            }
-        }
-        return best.getRoute();
     }
 
     public double countDistance(int[] route) {
@@ -246,5 +221,115 @@ public class Evolution {
         }
 
         return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
+    }
+
+    public ArrayList<ArrayList<Individual>> frontGenerator(ArrayList<Individual> group) {
+
+        ArrayList<ArrayList<Individual>> fronts = new ArrayList<>();
+//        paretoFronts.clear();
+        fronts.add(new ArrayList<>());
+        for(int i = 0; i < group.size(); i++) {
+            for (int j = 0; j < fronts.size(); j++) {
+                ArrayList<Individual> currentFront = fronts.get(j);
+                if (currentFront.size() == 0) {
+                    currentFront.add(group.get(i));
+                    break;
+                } else {
+                    for (int k = 0; k < currentFront.size(); k++) {
+                        int compared = group.get(i).compareTo(currentFront.get(k));
+                        if ((compared == 0) && (k == currentFront.size() - 1)) {
+                            currentFront.add(group.get(i));
+                            if(i < group.size() - 1) {
+                                i++;
+                                j = -1;
+                            }else {
+                                j = fronts.size();
+                            }
+                            break;
+                        } else if (compared == -1) {
+                            //zamiana miejsc
+                            ArrayList<Individual> betterFront = new ArrayList<>();
+                            betterFront.add(group.get(i));
+                            for(int z = 0; z < k; ) {
+                                betterFront.add(currentFront.get(z));
+                                currentFront.remove(z);
+                                k--;
+                            }
+                            for(int z = 1; z < currentFront.size(); z++) {
+                                if(group.get(i).compareTo(currentFront.get(z)) == 0) {
+                                    betterFront.add(currentFront.get(z));
+                                    currentFront.remove(z);
+                                    z--;
+                                }
+                            }
+                            fronts.add(j, betterFront);
+                            if(i < group.size() - 1) {
+                                i++;
+                                j = -1;
+                            }else {
+                                j = fronts.size();
+                            }
+                            break;
+                        } else if (compared == 1) {
+                            //nowy front
+                            if (fronts.size() < j + 2) {
+                                fronts.add(new ArrayList<>());
+                                fronts.get(j + 1).add(group.get(i));
+                                if(i < group.size() - 1) {
+                                    i++;
+                                    j = -1;
+                                }else {
+                                    j = fronts.size();
+                                }
+                                break;
+                            }
+                            else {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+//        crowdingDistanceSetter();
+//
+//        for(ArrayList<Individual> a : paretoFronts) {
+//            System.out.println("*************************");
+//            for(Individual i : a) {
+//                i.toString();
+//                System.out.println("CrowdingDistance: " + i.getCrowdingDistance());
+//            }
+//        }
+//        return dataGenerator();
+        return fronts;
+    }
+
+    public void objectiveSorting() {
+        for(int i = 0; i < paretoFronts.size(); i++) {
+            Collections.sort(paretoFronts.get(i), new ObjectiveFrontComparator());
+        }
+    }
+
+    public void crowdingDistanceSorting() {
+        for(int i = 0; i < paretoFronts.size(); i++) {
+            Collections.sort(paretoFronts.get(i), new ObjectiveFrontComparator());
+        }
+    }
+
+    public void crowdingDistanceSetter() {
+        objectiveSorting();
+        for(int i = 0; i < paretoFronts.size(); i++) {
+            paretoFronts.get(i).get(0).setCrowdingDistance(Double.POSITIVE_INFINITY);
+            paretoFronts.get(i).get(paretoFronts.get(i).size() - 1).setCrowdingDistance(Double.POSITIVE_INFINITY);
+
+            for(int j = 1; j < paretoFronts.get(i).size() - 1; j++) {
+                Individual currentInd = paretoFronts.get(i).get(j);
+                double a = Math.abs(paretoFronts.get(i).get(j + 1).getFitnessTime()
+                        - paretoFronts.get(i).get(j - 1).getFitnessTime());
+                double b = Math.abs(paretoFronts.get(i).get(0).getFitnessWage()
+                        - paretoFronts.get(i).get(paretoFronts.get(i).size() - 1).getFitnessWage());
+                currentInd.setCrowdingDistance(a * b);
+            }
+        }
     }
 }

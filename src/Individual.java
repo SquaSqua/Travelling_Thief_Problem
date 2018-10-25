@@ -10,13 +10,14 @@ public class Individual {
     private ArrayList<double[]> gainOfItems;
     private double maxSpeed;
     private double coefficient;
-    private double rentingRatio;
     private double basicTime;
     private int capacity;
-    private double fitness;
+    private int fitnessWage;
+    private double fitnessTime;
+    private double crowdingDistance;
 
     public Individual(int[] route, double[][] distances, int[][] items,
-                      Integer[][] groupedItems, double maxSpeed, double coefficient, double rentingRatio, int capacity) {
+                      Integer[][] groupedItems, double maxSpeed, double coefficient, int capacity) {
         this.route = route;
         this.distances = distances;
         this.groupedItems = groupedItems;
@@ -24,14 +25,14 @@ public class Individual {
         gainOfItems = new ArrayList<>();
         this.maxSpeed = maxSpeed;
         this.coefficient = coefficient;
-        this.rentingRatio = rentingRatio;
         basicTime = countTime(0, maxSpeed);
         this.capacity = capacity;
         packingPlan = new int[items.length];
 
         countGain();
         setPackingPlan();
-        countFitness();
+        countFitnessTime();
+        countFitnessWage();
     }
 
     private void setPackingPlan() {
@@ -54,10 +55,6 @@ public class Individual {
 
     private double countTime(int startIndex, int endIndex, double currentSpeed) {
         return countRoad(startIndex, endIndex) / currentSpeed;
-    }
-
-    private double countRoad(int startIndex) {
-        return countRoad(startIndex, route.length - 1);
     }
 
     private double countRoad(int startIndex, int endIndex) {
@@ -92,45 +89,53 @@ public class Individual {
                     break;
                 }
             }
-            gainOfItems.add(new double[] {i, (((items[i][1] -
-                    - rentingRatio * (countTime(ind, countSpeed(items[i][2])) - countTime(ind, maxSpeed)))
-                    / capacity))});
+            gainOfItems.add(new double[] {i, (items[i][1] / countTime(ind, countSpeed(items[i][2])))});
         }
         gainOfItems.sort((double[] o1, double[] o2) ->
                 o2[1] - o1[1] < 0 ? -1 : o2[1] > 0 ? 1 : 0);
     }
 
-    public double countFitness() {
-        double wage = 0;
+
+    public void countFitnessWage() {
+        int totalWage = 0;
+        for(int i = 0; i < packingPlan.length; i++) {
+            if(packingPlan[i] == 1) {
+                totalWage += items[i][1];
+            }
+        }
+        fitnessWage = totalWage;
+    }
+
+    public void countFitnessTime() {
         double weight = 0;
         double time = 0;
         for(int currentPosition = 0; currentPosition < route.length - 1; ) {
-                Integer[] currentCity = groupedItems[currentPosition];
-                for(int j = 0; j < currentCity.length; j++) {
-                    if(packingPlan[currentCity[j]] == 1) {
-                        wage += items[currentCity[j]][1];
-                        weight += items[currentCity[j]][2];
-                    }
+            Integer[] currentCity = groupedItems[currentPosition];
+            for(int j = 0; j < currentCity.length; j++) {
+                if(packingPlan[currentCity[j]] == 1) {
+                    weight += items[currentCity[j]][2];
                 }
+            }
             time += countTime(currentPosition, ++currentPosition, countSpeed(weight));
         }
-        fitness = wage - (rentingRatio * time);
-        return fitness;
+        fitnessTime = time;
     }
 
-    public double countFitnessForRoute() {
-        double distance = 0;
-        for(int i = 0; i < route.length - 1; ) {
-            distance += distances[route[i]][route[++i]];
-        }
-        return distance;
+    public int compareTo(Individual o) {
+        return (int) Math.signum(Math.signum(fitnessTime - o.fitnessTime) + Math.signum(fitnessWage - o.fitnessWage));
     }
 
     public int[] getRoute() {
         return route;
     }
 
-    public double getFitness() { return fitness; }
+    public int getFitnessWage() { return fitnessWage; }
+
+    public double getFitnessTime() { return fitnessTime; }
+
+    public void setCrowdingDistance(double crowdingDistance) {
+        this.crowdingDistance = crowdingDistance;
+    }
 
     public String toString() {
         String result = "[";
