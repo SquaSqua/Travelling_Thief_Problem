@@ -5,8 +5,8 @@ import java.util.Arrays;
 public class Runner {
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
-        Evolution population = new Evolution("src/definitionFiles/medium_0.ttp", 50, 100,
-                5, 0.6, 0.0005);
+        Evolution population = new Evolution("src/definitionFiles/medium_0.ttp", 100, 100,
+                10, 0.5, 0.01);
         String results = "results.csv";
         try {
             PrintWriter out = new PrintWriter(results);

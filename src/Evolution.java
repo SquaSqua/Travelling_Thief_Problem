@@ -126,19 +126,21 @@ public class Evolution {
 
     public int[] tournament() {
 
-        double bestFitness = Double.MIN_VALUE;
+        double bestFitness = Double.MIN_VALUE;//MAX_VALUE
         int rand = new Random().nextInt(popSize);
-        Individual best = population.get(rand);//never remembered, just initialization
+//        Individual best = population.get(rand);//never remembered, just initialization
+        int indexOfBest = -1;
         for(int i = 0; i < tournamentSize; i++) {
-            Individual current = population.get(new Random().nextInt(popSize));
+            int indexOfNew = new Random().nextInt(popSize);
+            Individual current = population.get(indexOfNew);
             double fitness = current.countFitness();
 //            double fitness = current.countFitnessForRoute();
-            if(fitness > bestFitness) {
+            if(fitness > bestFitness) {//<
                 bestFitness = fitness;
-                best = current;
+                indexOfBest = indexOfNew;
             }
         }
-        return best.getRoute();
+        return population.get(indexOfBest).getRoute();
     }
 
     public double countDistance(int[] route) {
@@ -207,6 +209,7 @@ public class Evolution {
     public int[] mutation(int[] route) {
         for(int i = 0; i < route.length - 2; i++) {
             if(Math.random() < mutProb) {
+                //System.out.println("*");
                 int swapIndex = new Random().nextInt(route.length - 1);
                 int temp = route[i];
                 route[i] = route[swapIndex];

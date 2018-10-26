@@ -115,6 +115,7 @@ public class Individual {
             time += countTime(currentPosition, ++currentPosition, countSpeed(weight));
         }
         fitness = wage - (rentingRatio * time);
+//        fitness = time;
         return fitness;
     }
 
