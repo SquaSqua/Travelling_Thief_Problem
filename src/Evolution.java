@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
@@ -107,21 +108,31 @@ public class Evolution {
         return ind;
     }
 
-
     public String evolve() {
         String measures = "", archivePrint = "";
         StringBuilder sBMeasures = new StringBuilder(measures);
         StringBuilder sBArchivePrint = new StringBuilder(archivePrint);
 
         initialize();
+        System.out.println("Rodzice przed selekcja");
+        printPopulation(population);
         ArrayList<Individual> offspring;
         ArrayList<Individual> nextGeneration;
+//            __________________________________
+        sBArchivePrint.append("Rodzice przed selekcja");
+        sBArchivePrint.append("\n");
+        sBArchivePrint.append(printPF(population, sBArchivePrint));
+//            ___________________________________
         for(int generation = 1; generation < numOfGeners; generation++) {
             paretoFronts = frontGenerator(population);
             assignRank();
             crowdingDistanceSetter();
             offspring = matingPool();
             population.addAll(offspring);
+            if(generation == 1) {
+                System.out.println("Populacja po selekcji");
+                printPopulation(population);
+            }
             paretoFronts = frontGenerator(population);
             assignRank();
             crowdingDistanceSetter();
@@ -141,10 +152,12 @@ public class Evolution {
                 }
             }
             population = nextGeneration;
+//            sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
+//            sBMeasures.append("\n");
         }
-        sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
-        sBMeasures.append("\n");
-        sBArchivePrint.append(printPF(paretoFronts.get(0), sBArchivePrint));//tu docelowo powinno byc archive
+//        sBMeasures.append(ED_measure(paretoFronts.get(0)) + ", " + PFS_measure() + ", " + HV_measure());
+//        sBMeasures.append("\n");
+        printPF(population, sBArchivePrint);//tu docelowo powinno byc archive//paretoFronts.get(0)
 //        System.out.println(sBArchivePrint.toString());
         sBMeasures.append(sBArchivePrint.toString());
         measures = sBMeasures.toString();
@@ -418,5 +431,11 @@ public class Evolution {
             lastY = paretoFronts.get(0).get(i).getFitnessWage();
         }
         return hyperVolume;
+    }
+
+    public void printPopulation(ArrayList<Individual> pop) {
+        for(int i = 0; i < pop.size(); i++) {
+            System.out.println(Arrays.toString(pop.get(i).getRoute()));
+        }
     }
 }
