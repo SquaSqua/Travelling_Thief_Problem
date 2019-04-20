@@ -1,19 +1,15 @@
+import org.knowm.xchart.QuickChart;
+import org.knowm.xchart.SwingWrapper;
+import org.knowm.xchart.XYChart;
+import org.knowm.xchart.XYChartBuilder;
+
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Random;
 
-public class Evolution {
-
-    private int dimension;
-    private int capacity;
-    private double minSpeed;
-    private double maxSpeed;
-    private double rentingRatio;
-    private double[][] cities;
-    private double[][] distances;
-    private int[][] items;
-    private Integer[][] groupedItems;
+class Evolution {
 
     private int popSize;
     private int numOfGeners;
@@ -21,102 +17,73 @@ public class Evolution {
     private double mutProb;
     private int tournamentSize;
 
-    private double coefficient;
+    private double[] generationData, minData, avgData, maxData;
 
     private ArrayList<Individual> population = new ArrayList<>();
 
-    public double maxOfAll = Double.MIN_VALUE;
+    private double maxOfAll = -Double.MAX_VALUE;
 
-    public Evolution(String definitionFile, int popSize, int numOfGeners, int tournamentSize, double crossProb, double mutProb) {
-        Loader loader = new Loader(definitionFile);
-        loader.readFile();
-        dimension = loader.getDimension();
-        capacity = loader.getCapacity();
-        minSpeed = loader.getMinSpeed();
-        maxSpeed = loader.getMaxSpeed();
-        rentingRatio = loader.getRentingRatio();
-        cities = loader.getCities();
-        items = loader.getItems();
-        distances = new double[dimension][dimension];
-        groupedItems = new Integer[dimension][];
-        createDistancesArray();
-        createGroupedItemsArray();
-
-        coefficient = (maxSpeed - minSpeed) / capacity;
-
+    Evolution(int popSize, int numOfGeners, int tournamentSize, double crossProb, double mutProb) {
         this.popSize = popSize;
         this.numOfGeners = numOfGeners;
         this.tournamentSize = tournamentSize;
         this.crossProb = crossProb;
         this.mutProb = mutProb;
+
+        this.generationData = new double[numOfGeners];
+        this.minData = new double[numOfGeners];
+        this.avgData = new double[numOfGeners];
+        this.maxData = new double[numOfGeners];
     }
 
-    public void createDistancesArray() {
-        for (int i = 0; i < dimension; i++) {
-            for (int j = 0; j < dimension; j++) {
-                double distance;
-                if (i == j) {
-                    distance = 0;
-                } else {
-                    distance = Math.sqrt(Math.abs(cities[i][1] - cities[j][1])
-                            + Math.abs(cities[i][2] - cities[j][2]));
-                }
-                distances[i][j] = distance;
-                distances[j][i] = distance;//redundant
-                //mozna zmienic tablicę na niesymetryczna, zeby zajmowala mniej miejsca
-            }
-        }
-    }
-
-    public void createGroupedItemsArray() {
-        ArrayList<Integer>[] groupedItemsList = new ArrayList[dimension];
-        for(int i = 0; i < dimension; i++) {
-            groupedItemsList[i] = new ArrayList<>();
-        }
-        for(int i = 0; i < items.length; i++) {
-            groupedItemsList[items[i][3] - 1].add(items[i][0] - 1);
-        }
-        for(int i = 0; i < dimension; i++) {
-            groupedItems[i] = new Integer[groupedItemsList[i].size()];
-            for (int j = 0; j < groupedItemsList[i].size(); j++) {
-                groupedItems[i][j] = groupedItemsList[i].get(j);
-            }
-        }
-    }
-
-    public void initialize() {
-        for (int i = 0; i < popSize; i++) {
-            population.add(generateRandomInd());
-        }
-    }
-
-    public Individual generateRandomInd() {
-        int[] route = new int[dimension + 1];
-        ArrayList<Integer> routeList = new ArrayList<>();
-        for (int i = 0; i < dimension; i++) {
-            routeList.add(i);
-        }
-        Collections.shuffle(routeList);
-        for (int i = 0; i < dimension; i++) {
-            route[i] = routeList.get(i);
-        }
-        route[dimension] = route[0];
-        Individual ind = new Individual(route, distances, items, groupedItems, maxSpeed, coefficient, rentingRatio, capacity);
-
-        return ind;
-    }
-
-
-    public String evolve(int generCounter) {
+    void run(String name) {
         initialize();
+        try {
+            PrintWriter out = new PrintWriter(name);
+//            out.println("nr populacji, najgorszy osobnik, najlepszy osobnik, sredni osobnik");
+            for (int i = 0; i < numOfGeners; i++) {
+                out.println(evolve(i));
+            }
+            System.out.println("Najlepszy w ewolucji: " + maxOfAll);
+            out.close();
+        } catch (FileNotFoundException ex) {
+            System.out.println("Nie da się utworzyć pliku!");
+        }
+
+        XYChart chart = getChart();
+        new SwingWrapper<>(chart).displayChart();
+    }
+
+    XYChart getChart() {
+        // Create Chart
+        XYChart chart = new XYChartBuilder().width(1000).height(600).title(getClass().getSimpleName()).xAxisTitle("Numer generacji").yAxisTitle("Zarobek (fitness)").build();
+
+
+        //Series
+        chart.addSeries("max", generationData, maxData);
+        chart.addSeries("avg", generationData, avgData);
+        chart.addSeries("min", generationData, minData);
+
+        return chart;
+    }
+
+    private void initialize() {
+        for (int i = 0; i < popSize; i++) {
+            population.add(new Individual(DataFromFile.getDimension()));
+        }
+    }
+
+    private String evolve(int generCounter) {
         ArrayList<Individual> nextGeneration = new ArrayList<>();
-        for(int i = 0; i < popSize - 1; i++) {
-            int[][] children = crossingOver(tournament(), tournament());
-            nextGeneration.add(new Individual(mutation(children[0]), distances, items, groupedItems, maxSpeed,
-                    coefficient, rentingRatio, capacity));
+        for(int i = 0; i < popSize; i++) {// - 1
+            int[][] children = tournament().crossover(tournament().getRoute(), crossProb);
+            Individual child1 = new Individual(children[0]);
+            child1.mutate(mutProb);
+            nextGeneration.add(child1);
             if(nextGeneration.size() < popSize) {
-                nextGeneration.add(new Individual(mutation(children[1]), distances, items, groupedItems, maxSpeed,
-                        coefficient, rentingRatio, capacity));
+                Individual child2 = new Individual(children[1]);
+                child2.mutate(mutProb);
+                nextGeneration.add(child2);
                 i++;
             }
         }
@@ -124,111 +91,45 @@ public class Evolution {
         return statistics(generCounter);
     }
 
-    public int[] tournament() {
+    private Individual tournament() {
 
-        double bestFitness = Double.MIN_VALUE;//MAX_VALUE
-        int rand = new Random().nextInt(popSize);
-//        Individual best = population.get(rand);//never remembered, just initialization
+        double bestFitness = -Double.MAX_VALUE;
         int indexOfBest = -1;
         for(int i = 0; i < tournamentSize; i++) {
             int indexOfNew = new Random().nextInt(popSize);
             Individual current = population.get(indexOfNew);
-            double fitness = current.countFitness();
-//            double fitness = current.countFitnessForRoute();
-            if(fitness > bestFitness) {//<
+            double fitness = current.getFitness();
+            if(fitness > bestFitness) {
                 bestFitness = fitness;
                 indexOfBest = indexOfNew;
             }
         }
-        return population.get(indexOfBest).getRoute();
+        return population.get(indexOfBest);
     }
 
-    public double countDistance(int[] route) {
-        double distance = 0;
-        for(int i = 0; i < route.length - 2; ) {
-            distance += distances[i][++i];
+    Individual roulette() {
+        double sumedFitensses = 0;
+        for(Individual i : population) {
+            sumedFitensses += i.getFitness();
         }
-        distance += distances[route.length - 2][0];
-        return distance;
-    }
-
-    public int[][] crossingOver(int[] parent1, int[] parent2) {
-        int[] child1 = new int[parent1.length];
-        int[] child2 = new int[parent1.length];
-        if(Math.random() < crossProb) {
-            int crossPoint = new Random().nextInt(parent1.length);
-            for(int i = 0; i < crossPoint; i++) {
-                child1[i] = parent1[i];
-                child2[i] = parent2[i];
-            }
-            //rest for parent1
-            boolean used = false;
-            int from = 0;
-            for(int empty = crossPoint; empty < child1.length - 1;) {
-                for(int j = 0; j < empty; j++) {
-                    if(child1[j] == parent2[from]){
-                        used = true;
-                        break;
-                    }
-                }
-                if(!used) {
-                    child1[empty] = parent2[from];
-                    empty++;
-                }
-                used = false;
-                from++;
-            }
-            child1[parent1.length - 1] = child1[0];
-
-            //rest for parent2
-            used = false;
-            from = 0;
-            for(int empty = crossPoint; empty < child2.length - 1;) {
-                for(int j = 0; j < empty; j++) {
-                    if(child2[j] == parent1[from]){
-                        used = true;
-                        break;
-                    }
-                }
-                if(!used) {
-                    child2[empty] = parent1[from];
-                    empty++;
-                }
-                used = false;
-                from++;
-            }
-            child2[parent2.length - 1] = child2[0];
+        Random random = new Random();
+        double drawn = (-1) * random.nextInt((int)(Math.floor(Math.abs(sumedFitensses)))) + random.nextDouble();
+        double partialSum = 0;
+        int i = 0;
+        for( ; partialSum < drawn; i++) {
+            partialSum += population.get(i).getFitness();
         }
-        else {
-            child1 = parent1;
-            child2 = parent2;
-        }
-        return new int[][] {child1, child2};
+        return population.get(i);
     }
 
-    public int[] mutation(int[] route) {
-        for(int i = 0; i < route.length - 2; i++) {
-            if(Math.random() < mutProb) {
-                //System.out.println("*");
-                int swapIndex = new Random().nextInt(route.length - 1);
-                int temp = route[i];
-                route[i] = route[swapIndex];
-                route[swapIndex] = temp;
-            }
-            route[route.length - 1] = route[0];
-        }
-        return route;
-    }
-
-    public int getNumOfGeners() {
-        return numOfGeners;
-    }
-
-    public String statistics(int pop_number) {
-        double minFitness = 2.147483647E9D;
-        double maxFitness = 0.0D;
+    private String statistics(int pop_number) {
+        double minFitness = Double.MAX_VALUE;
+        double maxFitness = -Double.MAX_VALUE;
         double avgDuration = 0.0D;
-
+        DecimalFormat df = new DecimalFormat();
+        df.setMaximumFractionDigits(3);
+        df.setMinimumFractionDigits(3);
+        df.setGroupingUsed(false);
 
         for(int i = 0; i < popSize; i++) {
             Individual ind = population.get(i);
@@ -248,6 +149,11 @@ public class Evolution {
             this.maxOfAll = maxFitness;
         }
 
-        return pop_number + ", " + minFitness + "," + maxFitness + "," + avgDuration / (double)popSize;
+        generationData[pop_number] = pop_number;
+        minData[pop_number] = minFitness;
+        avgData[pop_number] = avgDuration / (double)popSize;
+        maxData[pop_number] = maxFitness;
+
+        return pop_number + ", " + df.format(minFitness) + "," + df.format(avgDuration / (double)popSize) + "," + df.format(maxFitness);
     }
 }

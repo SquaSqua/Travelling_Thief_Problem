@@ -1,144 +1,163 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Random;
 
 public class Individual {
     private int[] route;
     private int[] packingPlan;
-    private double[][] distances;
-    private int[][] items;
-    private Integer[][] groupedItems;
-    private ArrayList<double[]> gainOfItems;
-    private double maxSpeed;
-    private double coefficient;
-    private double rentingRatio;
-    private double basicTime;
-    private int capacity;
     private double fitness;
 
-    public Individual(int[] route, double[][] distances, int[][] items,
-                      Integer[][] groupedItems, double maxSpeed, double coefficient, double rentingRatio, int capacity) {
+    Individual(int[] route) {
         this.route = route;
-        this.distances = distances;
-        this.groupedItems = groupedItems;
-        this.items = items;
-        gainOfItems = new ArrayList<>();
-        this.maxSpeed = maxSpeed;
-        this.coefficient = coefficient;
-        this.rentingRatio = rentingRatio;
-        basicTime = countTime(0, maxSpeed);
-        this.capacity = capacity;
-        packingPlan = new int[items.length];
-
-        countGain();
-        setPackingPlan();
-        countFitness();
+        packingPlan = null;
     }
 
-    private void setPackingPlan() {
-        int ind = 0;
-        int currentWeight = 0;
-        while(currentWeight < capacity && ind < gainOfItems.size()) {
-            int rowNumber = (int)gainOfItems.get(ind)[0];
-            if(items[rowNumber][2] + currentWeight <= capacity) {
-                packingPlan[rowNumber] = 1;
-                currentWeight += items[rowNumber][2];
-            }
-            ind++;
+    Individual(int dimension) {
+        int[] route = new int[dimension + 1];
+        ArrayList<Integer> routeList = new ArrayList<>();
+        for (int i = 0; i < dimension; i++) {
+            routeList.add(i);
         }
+        Collections.shuffle(routeList);
+        for (int i = 0; i < dimension; i++) {
+            route[i] = routeList.get(i).shortValue();
+        }
+        route[dimension] = route[0];
+        this.route = route;
+
+        PackingPlanGenerator.setPackingPlanAndFitness(this);
     }
 
-    private double countTime(int startIndex, double currentSpeed) {
-        int endIndex = route.length - 1;
-        return countTime(startIndex, endIndex, currentSpeed);
-    }
-
-    private double countTime(int startIndex, int endIndex, double currentSpeed) {
-        return countRoad(startIndex, endIndex) / currentSpeed;
-    }
-
-    private double countRoad(int startIndex) {
-        return countRoad(startIndex, route.length - 1);
-    }
-
-    private double countRoad(int startIndex, int endIndex) {
-        double completeDistance = 0;
-        if(endIndex == route.length - 1) {
-            for(int i = startIndex; i < endIndex - 1; ) {
-                completeDistance += distances[route[i]][route[++i]];
+    void mutate(double mutProb) {
+        for(int i = 0; i < route.length - 2; i++) {
+            if(Math.random() < mutProb) {
+                int swapIndex = new Random().nextInt(route.length - 1);
+                int temp = route[i];
+                route[i] = route[swapIndex];
+                route[swapIndex] = temp;
             }
-            completeDistance += distances[route.length - 2][0];
+            route[route.length - 1] = route[0];
+        }
+        PackingPlanGenerator.setPackingPlanAndFitness(this);
+    }
+
+    int[][] crossover(int[] route2, double crossProb) {
+        int[] routeWithoutLastCity, routeWithoutLastCity2;
+        int[][] children = new int[2][];
+        if(Math.random() < crossProb) {
+            routeWithoutLastCity = Arrays.copyOf(route, route.length - 1);
+            routeWithoutLastCity2 = Arrays.copyOf(route2, route2.length - 1);
+            children = crossingOver(routeWithoutLastCity, routeWithoutLastCity2);
+            children[0] = addLastCity(children[0]);
+            children[1] = addLastCity(children[1]);
         }
         else {
-            for(int i = startIndex; i < endIndex; i++) {
-                completeDistance += distances[route[i]][route[i + 1]];
-            }
+            children[0] = route;
+            children[1] = route2;
         }
+        return children;
+}
 
-        return completeDistance;
-    }
+    private int[][] crossingOver(int[] gens1, int[] genes2) {
+            int[] child1 = new int[gens1.length];
+            int[] child2 = new int[genes2.length];
 
-    public double countSpeed(double currentWeight) {
-        return maxSpeed - (currentWeight * coefficient);
-    }
-    //for each item gain is counted as a v - R(t - tb), where v - value of one item, R - renting ratio,
-    // t - time of carrying this one item with no more items from the point it was placed to,
-    //tb - basic time of travel from the chosen point with empty knapsack
-    private void countGain() {
-        for(int i = 0; i < items.length; i++) {
-            int ind = -1;//index of a city of an item 'i' in a route
-            for(int j = 0; j < route.length; j++) {//finding index of city number
-                if(route[j] + 1 == items[i][3]) {
-                    ind = j;
-                    break;
+            fillWithInitialValues(child1);
+            fillWithInitialValues(child2);
+
+            int beginningValue = gens1[0];
+            int currentInd = 0;
+
+            boolean isSwapTurn = false;
+            while (true) {
+                assignGens(isSwapTurn, currentInd, gens1, genes2, child1, child2);
+                if (gens1[currentInd] == genes2[currentInd]) {
+                    isSwapTurn = !isSwapTurn;
                 }
-            }
-            gainOfItems.add(new double[] {i, (((items[i][1] -
-                    - rentingRatio * (countTime(ind, countSpeed(items[i][2])) - countTime(ind, maxSpeed)))
-                    / capacity))});
-        }
-        gainOfItems.sort((double[] o1, double[] o2) ->
-                o2[1] - o1[1] < 0 ? -1 : o2[1] > 0 ? 1 : 0);
-    }
-
-    public double countFitness() {
-        double wage = 0;
-        double weight = 0;
-        double time = 0;
-        for(int currentPosition = 0; currentPosition < route.length - 1; ) {
-                Integer[] currentCity = groupedItems[currentPosition];
-                for(int j = 0; j < currentCity.length; j++) {
-                    if(packingPlan[currentCity[j]] == 1) {
-                        wage += items[currentCity[j]][1];
-                        weight += items[currentCity[j]][2];
+                currentInd = findIndexOfaValue(genes2[currentInd], gens1);
+                if (genes2[currentInd] == beginningValue) {
+                    assignGens(isSwapTurn, currentInd, gens1, genes2, child1, child2);
+                    currentInd = findFirstEmpty(child1);
+                    if (currentInd == -1) {
+                        break;
                     }
+                    beginningValue = gens1[currentInd];
+                    isSwapTurn = !isSwapTurn;
                 }
-            time += countTime(currentPosition, ++currentPosition, countSpeed(weight));
         }
-        fitness = wage - (rentingRatio * time);
-//        fitness = time;
-        return fitness;
+        return new int[][]{child1, child2};
     }
 
-    public double countFitnessForRoute() {
-        double distance = 0;
-        for(int i = 0; i < route.length - 1; ) {
-            distance += distances[route[i]][route[++i]];
+    private int findFirstEmpty(int[] route) {
+        int firstEmpty = -1;
+        for (int i = 0; i < route.length; i++) {
+            if (route[i] == -1) {
+                firstEmpty = i;
+                break;
+            }
         }
-        return distance;
+        return firstEmpty;
     }
 
-    public int[] getRoute() {
+    private void fillWithInitialValues(int[] array) {
+        for (int i = 0; i < array.length; i++) {
+            array[i] = -1;
+        }
+    }
+
+    private int findIndexOfaValue(int value, int[] route) {
+        int index = -1;
+        for (int i = 0; i < route.length; i++) {
+            if (route[i] == value) {
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
+
+    private void assignGens(boolean isSwapTurn, int currentInd, int[] route1, int[] route2, int[] child1, int[] child2) {
+        if (!isSwapTurn) {
+            child1[currentInd] = route1[currentInd];
+            child2[currentInd] = route2[currentInd];
+        } else {
+            child1[currentInd] = route2[currentInd];
+            child2[currentInd] = route1[currentInd];
+        }
+    }
+
+    private int[] addLastCity(int[] child) {
+        int[] ch = new int[child.length + 1];
+        System.arraycopy(child, 0, ch, 0, child.length);
+        ch[ch.length - 1] = ch[0];
+        return ch;
+    }
+
+    int[] getRoute() {
         return route;
     }
 
-    public double getFitness() { return fitness; }
+    double getFitness() { return fitness; }
+
+    int[] getPackingPlan() {
+        return packingPlan;
+    }
+
+    void setPackingPlan(int[] packingPlan) {
+        this.packingPlan = packingPlan;
+    }
+
+    void setFitness(double fitness) {
+        this.fitness = fitness;
+    }
 
     public String toString() {
-        String result = "[";
+        StringBuilder result = new StringBuilder("[");
         for(int i = 0; i < route.length - 1; i++) {
-            result += route[i] + ", ";
+            result.append(route[i]).append(", ");
         }
-        result += route[route.length - 1] + "]";
-        return result;
+        result.append(route[route.length - 1]).append("]");
+        return result.toString();
     }
 }
