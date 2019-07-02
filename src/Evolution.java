@@ -54,7 +54,7 @@ class Evolution {
         new SwingWrapper<>(chart).displayChart();
     }
 
-    XYChart getChart() {
+    private XYChart getChart() {
         // Create Chart
         XYChart chart = new XYChartBuilder().width(1000).height(600).title(getClass().getSimpleName()).xAxisTitle("Numer generacji").yAxisTitle("Zarobek (fitness)").build();
 
